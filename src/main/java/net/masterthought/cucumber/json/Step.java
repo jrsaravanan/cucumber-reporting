@@ -68,35 +68,13 @@ public class Step {
         return doc_string != null && doc_string.hasValue();
     }
 
-    private Util.Status getInternalStatus() {
+    public Util.Status getStatus() {
         if (result == null) {
             System.out.println("[WARNING] Line " + line + " : " + "Step is missing Result: " + keyword + " : " + name);
             return Util.Status.MISSING;
         } else {
             return Util.resultMap.get(result.getStatus());
         }
-    }
-
-    public Util.Status getStatus() {
-        Util.Status status = getInternalStatus();
-        Util.Status result = status;
-
-        if (ConfigurationOptions.skippedFailsBuild()) {
-            if (status == Util.Status.SKIPPED || status == Util.Status.FAILED) {
-                result = Util.Status.FAILED;
-            }
-        }
-
-        if (ConfigurationOptions.undefinedFailsBuild()) {
-            if (status == Util.Status.UNDEFINED || status == Util.Status.FAILED) {
-                result = Util.Status.FAILED;
-            }
-        }
-
-        if (status == Util.Status.FAILED) {
-            result = Util.Status.FAILED;
-        }
-        return result;
     }
 
     public Long getDuration() {
@@ -130,19 +108,29 @@ public class Step {
         String content = "";
         if (getStatus() == Util.Status.FAILED) {
             String errorMessage = result.getErrorMessage();
-            if (getInternalStatus() == Util.Status.SKIPPED) {
+            if (getStatus() == Util.Status.SKIPPED) {
                 errorMessage = "Mode: Skipped causes Failure<br/><span class=\"skipped\">This step was skipped</span>";
             }
-            if (getInternalStatus() == Util.Status.UNDEFINED) {
+            if (getStatus() == Util.Status.UNDEFINED) {
                 errorMessage = "Mode: Not Implemented causes Failure<br/><span class=\"undefined\">This step is not yet implemented</span>";
             }
-            content = Util.result(getStatus()) + "<span class=\"step-keyword\">" + keyword + " </span><span class=\"step-name\">" + name + "</span>" + "<div class=\"step-error-message\"><pre>" + formatError(errorMessage) + "</pre></div>" + Util.closeDiv() + getImageTags();
+            content = Util.result(getStatus()) + "<span class=\"step-keyword\">" + keyword + " </span><span class=\"step-name\">" + name + "</span><span class=\"step-duration\">" + Util.formatDuration(result.getDuration()) + "</span><div class=\"step-error-message\"><pre>" + formatError(errorMessage) + "</pre></div>" + Util.closeDiv() + getImageTags();
         } else if (getStatus() == Util.Status.MISSING) {
             String errorMessage = "<span class=\"missing\">Result was missing for this step</span>";
-            content = Util.result(getStatus()) + "<span class=\"step-keyword\">" + keyword + " </span><span class=\"step-name\">" + name + "</span>" + "<div class=\"step-error-message\"><pre>" + formatError(errorMessage) + "</pre></div>" + Util.closeDiv();
+            content = Util.result(getStatus()) + "<span class=\"step-keyword\">" + keyword + " </span><span class=\"step-name\">" + name + "</span><span class=\"step-duration\"></span><div class=\"step-error-message\"><pre>" + formatError(errorMessage) + "</pre></div>" + Util.closeDiv();
         } else {
-            content = Util.result(getStatus()) + "<span class=\"step-keyword\">" + keyword + " </span><span class=\"step-name\">" + name + "</span>" + Util.closeDiv() + getImageTags();
+            content = getNameAndDuration();
         }
+        return content;
+    }
+
+    private String getNameAndDuration() {
+        String content = Util.result(getStatus())
+                + "<span class=\"step-keyword\">" + keyword
+                + " </span><span class=\"step-name\">" + name + "</span>"
+                + "<span class=\"step-duration\">" + Util.formatDuration(result.getDuration()) + "</span>"
+                + Util.closeDiv() + getImageTags();
+
         return content;
     }
 
@@ -150,6 +138,7 @@ public class Step {
      * Returns a formatted doc-string section.
      * This is formatted w.r.t the parent Step element.
      * To preserve whitespace in example, line breaks and whitespace are preserved
+     *
      * @return string of html
      */
     public String getDocStringOrNothing() {
@@ -157,15 +146,15 @@ public class Step {
             return "";
         }
         return Util.result(getStatus()) +
-                 "<div class=\"doc-string\">" +
-                    getDocString().getEscapedValue() +
-                 Util.closeDiv() +
-               Util.closeDiv();
+                "<div class=\"doc-string\">" +
+                getDocString().getEscapedValue() +
+                Util.closeDiv() +
+                Util.closeDiv();
     }
 
     private String formatError(String errorMessage) {
         String result = errorMessage;
-        if (errorMessage != null || !errorMessage.isEmpty()) {
+        if (errorMessage != null && !errorMessage.isEmpty()) {
             result = errorMessage.replaceAll("\\\\n", "<br/>");
         }
         return result;
@@ -182,10 +171,10 @@ public class Step {
         int index = 1;
         for (Object image : embeddings) {
             if (image != null) {
-            String mimeEncodedImage = mimeEncodeEmbededImage(image);
-            String imageId = UUID.nameUUIDFromBytes(mimeEncodedImage.getBytes()).toString();
-            links = links +   "<a href=\"\" onclick=\"img=document.getElementById('" + imageId + "'); img.style.display = (img.style.display == 'none' ? 'block' : 'none');return false\">Screenshot "+ index++ +"</a>" +
-                    "<img id='"+ imageId +"' style='display:none' src='" + mimeEncodedImage + "'>\n";
+                String mimeEncodedImage = mimeEncodeEmbededImage(image);
+                String imageId = UUID.nameUUIDFromBytes(mimeEncodedImage.getBytes()).toString();
+                links = links + "<a href=\"\" onclick=\"img=document.getElementById('" + imageId + "'); img.style.display = (img.style.display == 'none' ? 'block' : 'none');return false\">Screenshot " + index++ + "</a>" +
+                        "<img id='" + imageId + "' style='display:none' src='" + mimeEncodedImage + "'>\n";
             }
         }
         return links;
@@ -196,11 +185,12 @@ public class Step {
     }
 
 
-    public static String mimeEncodeEmbededImage(Object image){
+    public static String mimeEncodeEmbededImage(Object image) {
         return "data:image/png;base64," + ((LinkedTreeMap) image).get("data");
 
     }
-    public static String uuidForImage(Object image){
+
+    public static String uuidForImage(Object image) {
         return UUID.nameUUIDFromBytes(mimeEncodeEmbededImage(image).getBytes()).toString();
     }
 

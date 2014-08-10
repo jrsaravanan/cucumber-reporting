@@ -83,7 +83,7 @@ public class Feature {
     public String getRawStatus() {
         return getStatus().toString().toLowerCase();
     }
-
+    
     public String getDescription() {
         String result = "";
         if (Util.itemExists(description)) {
@@ -141,6 +141,10 @@ public class Feature {
     public String getDurationOfSteps() {
         return stepResults.getTotalDurationAsString();
     }
+    
+    public Long getRawDurationOfSteps() {
+        return stepResults.getTotalDuration();
+    }
 
     public int getNumberOfScenariosPassed() {
         return scenarioResults.getNumberOfScenariosPassed();
@@ -148,6 +152,10 @@ public class Feature {
 
     public int getNumberOfScenariosFailed() {
         return scenarioResults.getNumberOfScenariosFailed();
+    }
+    
+    public String getRawDescription() {
+    	return description;
     }
 
     public void processSteps() {

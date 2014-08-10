@@ -5,6 +5,7 @@ import net.masterthought.cucumber.charts.JsChartUtil;
 import net.masterthought.cucumber.json.Feature;
 import net.masterthought.cucumber.util.UnzipUtils;
 import net.masterthought.cucumber.util.Util;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.velocity.Template;
@@ -19,16 +20,16 @@ import java.util.*;
 
 public class ReportBuilder {
 
-    ReportInformation ri;
-    private File reportDirectory;
-    private String buildNumber;
-    private String buildProject;
-    private String pluginUrlPath;
-    private boolean flashCharts;
-    private boolean runWithJenkins;
-    private boolean artifactsEnabled;
-    private boolean highCharts;
-    private boolean parsingError;
+    public ReportInformation ri;
+    protected File reportDirectory;
+    protected String buildNumber;
+    protected String buildProject;
+    protected String pluginUrlPath;
+    protected boolean flashCharts;
+    protected boolean runWithJenkins;
+    protected boolean artifactsEnabled;
+    protected boolean highCharts;
+    protected boolean parsingError;
 
     public Map<String, String> getCustomHeader() {
         return customHeader;
@@ -40,7 +41,8 @@ public class ReportBuilder {
 
     private Map<String, String> customHeader;
 
-    private final String VERSION = "cucumber-reporting-0.0.22";
+    private final String VERSION = "cucumber-reporting-0.0.23";
+	protected List<String> jsonReports;
 
     public ReportBuilder(List<String> jsonReports, File reportDirectory, String pluginUrlPath, String buildNumber, String buildProject, boolean skippedFails, boolean undefinedFails, boolean flashCharts, boolean runWithJenkins, boolean artifactsEnabled, String artifactConfig, boolean highCharts) throws Exception {
 
@@ -53,6 +55,7 @@ public class ReportBuilder {
             this.runWithJenkins = runWithJenkins;
             this.artifactsEnabled = artifactsEnabled;
             this.highCharts = highCharts;
+            this.jsonReports = jsonReports;
 
             ConfigurationOptions.setSkippedFailsBuild(skippedFails);
             ConfigurationOptions.setUndefinedFailsBuild(undefinedFails);
@@ -71,6 +74,38 @@ public class ReportBuilder {
             System.out.println(exception);
         }
     }
+    
+    
+    public ReportBuilder(File reportDirectory , String buildNumber ,String pluginUrlPath, String fileName,String fileContent) throws Exception {
+
+        try {
+            this.reportDirectory = reportDirectory;
+            this.buildNumber = buildNumber;
+            this.buildProject = buildProject;
+            this.pluginUrlPath = getPluginUrlPath(pluginUrlPath);
+            this.flashCharts = true;
+            this.runWithJenkins = false;
+            this.artifactsEnabled = true;
+            this.highCharts = true;
+
+            ConfigurationOptions.setSkippedFailsBuild(false);
+            ConfigurationOptions.setUndefinedFailsBuild(false);
+            ConfigurationOptions.setArtifactsEnabled(artifactsEnabled);
+            if (artifactsEnabled) {
+                ArtifactProcessor artifactProcessor = new ArtifactProcessor("");
+                ConfigurationOptions.setArtifactConfiguration(artifactProcessor.process());
+            }
+
+            ReportParser reportParser = new ReportParser(jsonReports);
+            this.ri = new ReportInformation(reportParser.getFeatures());
+
+        } catch (Exception exception) {
+            parsingError = true;
+            generateErrorPage(exception);
+            System.out.println(exception);
+        }
+    }
+    
 
     public boolean getBuildStatus() {
         return !(ri.getTotalNumberFailingSteps() > 0);
@@ -123,7 +158,7 @@ public class ReportBuilder {
         }
     }
 
-    private void generateFeatureOverview() throws Exception {
+    protected void generateFeatureOverview() throws Exception {
         VelocityEngine ve = new VelocityEngine();
         ve.init(getProperties());
         Template featureOverview = ve.getTemplate("templates/featureOverview.vm");
@@ -229,7 +264,7 @@ public class ReportBuilder {
         generateReport("feature-overview.html", errorPage, contextMap.getVelocityContext());
     }
 
-    private void copyResource(String resourceLocation, String resourceName) throws IOException, URISyntaxException {
+    protected void copyResource(String resourceLocation, String resourceName) throws IOException, URISyntaxException {
         final File tmpResourcesArchive = File.createTempFile("temp", resourceName + ".zip");
 
         InputStream resourceArchiveInputStream = ReportBuilder.class.getResourceAsStream(resourceLocation + "/" + resourceName);
@@ -251,7 +286,7 @@ public class ReportBuilder {
         return path.isEmpty() ? "/" : path;
     }
 
-    private void generateReport(String fileName, Template featureResult, VelocityContext context) throws Exception {
+    protected void generateReport(String fileName, Template featureResult, VelocityContext context) throws Exception {
         FileOutputStream fileStream = new FileOutputStream(new File(reportDirectory, fileName));
         OutputStreamWriter writer = new OutputStreamWriter(fileStream, "UTF-8");
         featureResult.merge(context, writer);
@@ -259,7 +294,7 @@ public class ReportBuilder {
         writer.close();
     }
 
-    private Properties getProperties() {
+    protected Properties getProperties() {
         Properties props = new Properties();
         props.setProperty("resource.loader", "class");
         props.setProperty("class.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
@@ -267,7 +302,7 @@ public class ReportBuilder {
         return props;
     }
 
-    private HashMap<String, Object> getGeneralParameters() {
+    protected HashMap<String, Object> getGeneralParameters() {
         HashMap<String, Object> result = new HashMap<String, Object>();
         result.put("version", VERSION);
         result.put("fromJenkins", runWithJenkins);

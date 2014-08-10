@@ -34,4 +34,15 @@ public class ReportParser {
 
         return featureResults;
     }
+    
+    private Map<String, List<Feature>> parseJsonResults(String fileName,String jsonReportContent) throws IOException {
+        Map<String, List<Feature>> featureResults = new LinkedHashMap<String, List<Feature>>();
+            
+            if (Util.isValidCucumberJsonReport(jsonReportContent)) {
+                Feature[] features = new Gson().fromJson(Util.U2U(jsonReportContent), Feature[].class);
+                featureResults.put(fileName, Arrays.asList(features));
+            }
+
+        return featureResults;
+    }
 }

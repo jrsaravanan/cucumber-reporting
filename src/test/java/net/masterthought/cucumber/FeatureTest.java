@@ -4,7 +4,6 @@ import net.masterthought.cucumber.json.Feature;
 import net.masterthought.cucumber.util.Util;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.internal.matchers.StringContains;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -115,7 +114,7 @@ public class FeatureTest {
 
     @Test
     public void shouldGetDurationOfSteps() {
-        assertThat(passingFeature.getDurationOfSteps(), StringContains.containsString("ms"));
+        assertThat(passingFeature.getDurationOfSteps(), org.hamcrest.core.StringContains.containsString("ms"));
     }
 
     @Test

@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.core.Is.is;
@@ -21,7 +22,7 @@ public class ReportBuilderTest {
     public void shouldRenderTheFeatureOverviewPageCorrectlyWithFlashCharts() throws Exception {
         File rd = new File(ReportBuilderTest.class.getClassLoader().getResource("net/masterthought/cucumber").toURI());
         List<String> jsonReports = new ArrayList<String>();
-        jsonReports.add(new File(ReportBuilderTest.class.getClassLoader().getResource("net/masterthought/cucumber/project1.json").toURI()).getAbsolutePath());
+        jsonReports.add(new File(ReportBuilderTest.class.getClassLoader().getResource("net/masterthought/cucumber/project3.json").toURI()).getAbsolutePath());
         ReportBuilder reportBuilder = new ReportBuilder(jsonReports, rd, "", "1", "cucumber-reporting", false, false, true, true, false, "", false);
         reportBuilder.generateReports();
 
@@ -37,7 +38,7 @@ public class ReportBuilderTest {
     public void shouldRenderTheFeatureOverviewPageCorrectlyWithJSCharts() throws Exception {
         File rd = new File(ReportBuilderTest.class.getClassLoader().getResource("net/masterthought/cucumber").toURI());
         List<String> jsonReports = new ArrayList<String>();
-        jsonReports.add(new File(ReportBuilderTest.class.getClassLoader().getResource("net/masterthought/cucumber/project1.json").toURI()).getAbsolutePath());
+        jsonReports.add(new File(ReportBuilderTest.class.getClassLoader().getResource("net/masterthought/cucumber/project3.json").toURI()).getAbsolutePath());
         ReportBuilder reportBuilder = new ReportBuilder(jsonReports, rd, "", "1", "cucumber-reporting", false, false, false, true, false, "", false);
         reportBuilder.generateReports();
 
@@ -54,7 +55,7 @@ public class ReportBuilderTest {
     public void shouldRenderTheFeaturePageCorrectly() throws Exception {
         File rd = new File(ReportBuilderTest.class.getClassLoader().getResource("net/masterthought/cucumber").toURI());
         List<String> jsonReports = new ArrayList<String>();
-        jsonReports.add(new File(ReportBuilderTest.class.getClassLoader().getResource("net/masterthought/cucumber/project1.json").toURI()).getAbsolutePath());
+        jsonReports.add(new File(ReportBuilderTest.class.getClassLoader().getResource("net/masterthought/cucumber/project3.json").toURI()).getAbsolutePath());
         ReportBuilder reportBuilder = new ReportBuilder(jsonReports, rd, "", "1", "cucumber-reporting", false, false, true, true, false, "", false);
         reportBuilder.generateReports();
 
@@ -63,6 +64,7 @@ public class ReportBuilderTest {
         assertThat(fromId("feature-title", doc).text(), is("Feature Result for Build: 1"));
         assertStatsHeader(doc);
         assertStatsFirstFeature(doc);
+        assertFeatureContent(doc);
     }
 
     @Test
@@ -143,19 +145,87 @@ public class ReportBuilderTest {
         assertThat("stats-number-steps-failed", fromId("stats-number-steps-failed-Account Holder withdraws cash", doc).text(), is("0"));
         assertThat("stats-number-steps-skipped", fromId("stats-number-steps-skipped-Account Holder withdraws cash", doc).text(), is("0"));
         assertThat("stats-number-steps-pending", fromId("stats-number-steps-pending-Account Holder withdraws cash", doc).text(), is("0"));
+        assertThat("stats-duration", fromId("stats-duration-Account Holder withdraws cash", doc).text(), is("112 ms"));
         assertNotNull(fromId("stats-duration-Account Holder withdraws cash", doc));
     }
 
+    private void assertFeatureContent(Document doc) {
+        Elements elements = doc.select("div.passed");
+
+        assertThat("feature-keyword", elements.select("div.feature-line span.feature-keyword").first().text(), is("Feature:"));
+        assertThat("feature-text", elements.select("div.feature-line").first().text(), is("Feature: Account Holder withdraws cash"));
+        assertThat("feature-description", doc.select("div.feature-description").first().text(),
+                is("As a Account Holder I want to withdraw cash from an ATM So that I can get money when the bank is closed"));
+        assertThat("scenario-background-keyword", doc.select("div.passed span.scenario-keyword").first().text(), is("Background:"));
+        assertThat("scenario-background-name", doc.select("div.passed span.scenario-name").first().text(), is("Activate Credit Card"));
+
+        elements = doc.select("div.passed span.step-keyword");
+        List<String> backgroundStepKeywords = new ArrayList<String>();
+        List<String> firstScenarioStepKeywords = new ArrayList<String>();
+        for (Element element : elements) {
+            int index = elements.indexOf(element);
+            if (index < 3) {
+                backgroundStepKeywords.add(element.text());
+            } else if (index >= 3 && index < 10) {
+                firstScenarioStepKeywords.add(element.text());
+            } else {
+                break;
+            }
+        }
+        assertThat("Background step keywords must be same", backgroundStepKeywords, is(Arrays.asList(new String[] {"Given", "When", "Then"})));
+        assertThat("First scenario step keywords must be same", firstScenarioStepKeywords,
+                is(Arrays.asList(new String[] {"Given", "And", "And", "When", "Then", "And", "And"})));
+
+        elements = doc.select("div.passed span.step-name");
+        List<String> backgroundStepNames = new ArrayList<String>();
+        List<String> firstScenarioStepNames = new ArrayList<String>();
+        for (Element element : elements) {
+            int index = elements.indexOf(element);
+            if (index < 3) {
+                backgroundStepNames.add(element.text());
+            } else if (index >= 3 && index < 10) {
+                firstScenarioStepNames.add(element.text());
+            } else {
+                break;
+            }
+        }
+        assertThat("Background step names must be same", backgroundStepNames,
+                is(Arrays.asList(new String[] {
+                        "I have a new credit card",
+                        "I confirm my pin number",
+                        "the card should be activated"})));
+        assertThat("First scenario step names must be same", firstScenarioStepNames,
+                is(Arrays.asList(new String[] {
+                        "the account balance is 100",
+                        "the card is valid",
+                        "the machine contains 100",
+                        "the Account Holder requests 10",
+                        "the ATM should dispense 10",
+                        "the account balance should be 90",
+                        "the card should be returned"})));
+
+        elements = doc.select("div.passed span.step-duration");
+//        assertFalse("step durations must not be empty", elements.isEmpty());
+        List<String> stepDurations = new ArrayList<String>();
+        for (Element element : elements) {
+            stepDurations.add(element.text());
+            int index = elements.indexOf(element);
+            if (index >= 10) break;
+        }
+        assertThat("Step durations must be same", stepDurations,
+                is(Arrays.asList(new String [] {"107 ms", "0 ms", "0 ms", "0 ms", "0 ms", "0 ms", "0 ms", "3 ms", "0 ms", "0 ms", "0 ms"})));
+    }
+
     private void assertStatsTotals(Document doc) {
-        assertThat("stats-total-features", fromId("stats-total-features", doc).text(), is("2"));
-        assertThat("stats-total-scenarios", fromId("stats-total-scenarios", doc).text(), is("5"));
-        assertThat("stats-total-scenarios-passed", fromId("stats-total-scenarios-passed", doc).text(), is("4"));
+        assertThat("stats-total-features", fromId("stats-total-features", doc).text(), is("4"));
+        assertThat("stats-total-scenarios", fromId("stats-total-scenarios", doc).text(), is("7"));
+        assertThat("stats-total-scenarios-passed", fromId("stats-total-scenarios-passed", doc).text(), is("6"));
         assertThat("stats-total-scenarios-failed", fromId("stats-total-scenarios-failed", doc).text(), is("1"));
-        assertThat("stats-total-steps", fromId("stats-total-steps", doc).text(), is("49"));
-        assertThat("stats-total-steps-passed", fromId("stats-total-steps-passed", doc).text(), is("45"));
+        assertThat("stats-total-steps", fromId("stats-total-steps", doc).text(), is("67"));
+        assertThat("stats-total-steps-passed", fromId("stats-total-steps-passed", doc).text(), is("55"));
         assertThat("stats-total-steps-failed", fromId("stats-total-steps-failed", doc).text(), is("1"));
-        assertThat("stats-total-steps-skipped", fromId("stats-total-steps-skipped", doc).text(), is("3"));
-        assertThat("stats-total-steps-pending", fromId("stats-total-steps-pending", doc).text(), is("0"));
+        assertThat("stats-total-steps-skipped", fromId("stats-total-steps-skipped", doc).text(), is("7"));
+        assertThat("stats-total-steps-pending", fromId("stats-total-steps-pending", doc).text(), is("4"));
         assertNotNull(fromId("stats-total-duration", doc));
         assertThat(fromId("stats-total-totals", doc).text(), is("Totals"));
     }
